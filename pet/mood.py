@@ -1,9 +1,10 @@
 PLAYFUL = "playful"
-HAPPY = "happy"
-GRUMPY = "grumpy"
+SAD = "sad"
+HUNGRY = "hungry"
+BORED = "bored"
 
-DEFAULT_MOOD = PLAYFUL
-ALL_MOODS = {PLAYFUL, HAPPY, GRUMPY}
+DEFAULT_MOOD = SAD
+ALL_MOODS = {PLAYFUL, SAD, HUNGRY, BORED}
 
 
 def normalize_mood(value: str) -> str:

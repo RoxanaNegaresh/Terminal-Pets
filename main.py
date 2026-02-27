@@ -16,6 +16,8 @@ from cli.runtime import (
     spawn_terminal_companion,
     stop_in_terminal_hud,
 )
+from persistence.storage import load_pet_state, reset_pet_state
+from pet.actions import apply_action
 from pet.pet import Pet
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -34,6 +36,30 @@ def run_overlay_mode() -> None:
 
 def main() -> None:
     entry_script = os.path.abspath(__file__)
+    known_flags = {
+        "--hud",
+        "--hud-stop",
+        "--hud-child",
+        "--companion",
+        "--background",
+        "--overlay",
+        "--corner",
+        "--corner-child",
+        "--docker-live",
+        "--passive-live",
+        "--live",
+        "--status",
+        "--play",
+        "--feed",
+        "--reset",
+    }
+
+    unknown_flags = [arg for arg in sys.argv[1:] if arg.startswith("--") and arg not in known_flags]
+    if unknown_flags:
+        print(f"Unknown option(s): {' '.join(unknown_flags)}")
+        print("Use: python main.py   (interactive)")
+        print("Or one-shot: python main.py --status|--play|--feed|--reset")
+        return
 
     if "--hud" in sys.argv:
         if not spawn_in_terminal_hud(entry_script):
@@ -45,8 +71,15 @@ def main() -> None:
             print("No running in-terminal pet HUD found.")
         return
 
+    if "--reset" in sys.argv:
+        if reset_pet_state():
+            print("Pet state reset.")
+        else:
+            print("No saved pet state found.")
+        return
+
     if "--hud-child" in sys.argv:
-        run_in_terminal_hud(Pet())
+        run_in_terminal_hud(Pet.from_state(load_pet_state()))
         return
 
     if "--companion" in sys.argv:
@@ -66,7 +99,21 @@ def main() -> None:
         spawn_corner_pet_window(entry_script)
         return
 
-    pet = Pet()
+    pet = Pet.from_state(load_pet_state())
+
+    if "--status" in sys.argv:
+        apply_action(pet, "status")
+        return
+
+    if "--play" in sys.argv:
+        apply_action(pet, "play")
+        apply_action(pet, "status")
+        return
+
+    if "--feed" in sys.argv:
+        apply_action(pet, "feed")
+        apply_action(pet, "status")
+        return
 
     if "--docker-live" in sys.argv:
         run_docker_live_mode(pet)

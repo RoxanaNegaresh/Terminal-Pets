@@ -10,6 +10,7 @@ def handle_command(pet: Pet, command: str) -> bool:
 
 def run_interactive_mode(pet: Pet, frame_getter: Callable[[str, bool], str]) -> None:
     while True:
+        pet.tick()
         print(frame_getter(pet.mood, False))
         command = input("Enter command (feed/play/status/exit): ").strip().lower()
         if not handle_command(pet, command):

@@ -1,18 +1,6 @@
-from pet.mood import GRUMPY, HAPPY, PLAYFUL, normalize_mood
+from pet.mood import BORED, HUNGRY, PLAYFUL, SAD, normalize_mood
 
 ASCII_FRAMES = {
-    HAPPY: {
-        "open": r"""
- /\_/\
-( ^.^ )  Mood: Happy
- > ^ <
-""",
-        "closed": r"""
- /\_/\
-( -.- )  Mood: Happy
- > ^ <
-""",
-    },
     PLAYFUL: {
         "open": r"""
  /\_/\
@@ -25,16 +13,40 @@ ASCII_FRAMES = {
  > ^ <
 """,
     },
-    GRUMPY: {
+    SAD: {
         "open": r"""
  /\_/\
-( -.- )  Mood: Grumpy
+( ;.; )  Mood: Sad
  > ^ <
 """,
         "closed": r"""
  /\_/\
-( -.- )  Mood: Grumpy
+( -.- )  Mood: Sad
  > ^ <
+""",
+    },
+    HUNGRY: {
+        "open": r"""
+ /\_/\
+( o.o )  Mood: Hungry
+ > ~ <
+""",
+        "closed": r"""
+ /\_/\
+( -.- )  Mood: Hungry
+ > ~ <
+""",
+    },
+    BORED: {
+        "open": r"""
+ /\_/\
+( -.- )  Mood: Bored
+ > - <
+""",
+        "closed": r"""
+ /\_/\
+( -.- )  Mood: Bored
+ > - <
 """,
     },
 }

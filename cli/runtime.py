@@ -8,11 +8,13 @@ import tempfile
 import time
 
 from animation.ascii_art import get_frame
+from persistence.storage import load_pet_state
 from pet.pet import Pet
 from utils.timers import BlinkTimer
 
 PID_FILE = os.path.join(tempfile.gettempdir(), "terminal_pet_hud.pid")
 STOP_FILE = os.path.join(tempfile.gettempdir(), "terminal_pet_hud.stop")
+ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
 
 def clear_screen() -> None:
@@ -176,7 +178,23 @@ def _clear_hud_block(lines: list[str], col: int, row: int) -> None:
         sys.stdout.write(" " * max(1, len(line)))
 
 
+def _enable_windows_vt_mode() -> None:
+    if os.name != "nt":
+        return
+    try:
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        mode = ctypes.c_uint()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)) == 0:
+            return
+        new_mode = mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        kernel32.SetConsoleMode(handle, new_mode)
+    except Exception:
+        pass
+
+
 def run_in_terminal_hud(pet: Pet) -> None:
+    _enable_windows_vt_mode()
     with open(PID_FILE, "w", encoding="utf-8") as handle:
         handle.write(str(os.getpid()))
 
@@ -194,11 +212,17 @@ def run_in_terminal_hud(pet: Pet) -> None:
     prev_lines: list[str] = []
     prev_pos = (1, 1)
     blink_timer = BlinkTimer(min_interval=1.2, max_interval=3.0, duration=0.14)
+    last_forced_redraw = 0.0
 
     while True:
         if os.path.exists(STOP_FILE):
             break
 
+        state = load_pet_state()
+        if state is not None:
+            pet = Pet.from_state(state)
+        else:
+            pet.tick()
         blinking = blink_timer.is_blinking()
         frame_lines = get_frame(pet.mood, blink=blinking).strip("\n").splitlines()
         width = max(len(line) for line in frame_lines) if frame_lines else 1
@@ -207,20 +231,27 @@ def run_in_terminal_hud(pet: Pet) -> None:
         col = max(1, term_size.columns - width)
         row = 1
 
-        # Always redraw so external clear operations (for example Ctrl+L)
-        # repopulate the HUD immediately.
-        sys.stdout.write("\033[s")
-        if prev_lines:
-            _clear_hud_block(prev_lines, prev_pos[0], prev_pos[1])
-        for index, line in enumerate(frame_lines):
-            padded = line.ljust(width)
-            sys.stdout.write(f"\033[{row + index};{col}H{padded}")
-        sys.stdout.write("\033[u")
-        sys.stdout.flush()
+        now = time.monotonic()
+        should_redraw = (
+            frame_lines != prev_lines
+            or (col, row) != prev_pos
+            or (now - last_forced_redraw) >= 0.35
+        )
+
+        if should_redraw:
+            sys.stdout.write("\033[s")
+            if prev_lines:
+                _clear_hud_block(prev_lines, prev_pos[0], prev_pos[1])
+            for index, line in enumerate(frame_lines):
+                padded = line.ljust(width)
+                sys.stdout.write(f"\033[{row + index};{col}H{padded}")
+            sys.stdout.write("\033[u")
+            sys.stdout.flush()
+            last_forced_redraw = now
 
         prev_lines = frame_lines
         prev_pos = (col, row)
-        time.sleep(0.08)
+        time.sleep(0.1)
 
     sys.stdout.write("\033[s")
     if prev_lines:
@@ -254,6 +285,7 @@ def run_live_mode_windows(pet: Pet) -> None:
     blink_timer = BlinkTimer(min_interval=1.0, max_interval=2.2, duration=0.14)
 
     while True:
+        pet.tick()
         blink = blink_timer.is_blinking()
         first_draw = render_frame_in_place(get_frame(pet.mood, blink=blink), first_draw)
         time.sleep(0.08)
@@ -264,6 +296,7 @@ def run_live_mode_passive(pet: Pet) -> None:
     blink_timer = BlinkTimer(min_interval=1.0, max_interval=2.2, duration=0.14)
 
     while True:
+        pet.tick()
         blink = blink_timer.is_blinking()
         first_draw = render_frame_in_place(get_frame(pet.mood, blink=blink), first_draw)
         time.sleep(0.08)
@@ -273,6 +306,7 @@ def run_docker_live_mode(pet: Pet) -> None:
     blink_timer = BlinkTimer(min_interval=1.0, max_interval=2.2, duration=0.14)
 
     while True:
+        pet.tick()
         print(get_frame(pet.mood, blink=blink_timer.is_blinking()), flush=True)
         time.sleep(0.25)
 
@@ -281,6 +315,7 @@ def run_auto_mode(pet: Pet) -> None:
     blink_timer = BlinkTimer(min_interval=1.5, max_interval=4.0, duration=0.18)
 
     while True:
+        pet.tick()
         is_blinking = blink_timer.is_blinking()
         clear_screen()
         print(get_frame(pet.mood, blink=is_blinking))
