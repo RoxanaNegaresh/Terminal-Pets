@@ -1,57 +1,66 @@
 from pet.mood import BORED, HUNGRY, PLAYFUL, SAD, normalize_mood
 
-ASCII_FRAMES = {
+ASCII_BASE = {
     PLAYFUL: {
-        "open": r"""
- /\_/\
-( o.o )  Mood: Playful
- > ^ <
-""",
-        "closed": r"""
- /\_/\
-( -.- )  Mood: Playful
- > ^ <
-""",
+        "open": [
+            r"/\_/\ ",
+            r"( o.o )",
+            r" > ^ < ",
+        ],
+        "closed": [
+            r"/\_/\ ",
+            r"( -.- )",
+            r" > ^ < ",
+        ],
     },
     SAD: {
-        "open": r"""
- /\_/\
-( ;.; )  Mood: Sad
- > ^ <
-""",
-        "closed": r"""
- /\_/\
-( -.- )  Mood: Sad
- > ^ <
-""",
+        "open": [
+            r"/\_/\ ",
+            r"( ;.; )",
+            r" > ^ < ",
+        ],
+        "closed": [
+            r"/\_/\ ",
+            r"( -.- )",
+            r" > ^ < ",
+        ],
     },
     HUNGRY: {
-        "open": r"""
- /\_/\
-( o.o )  Mood: Hungry
- > ~ <
-""",
-        "closed": r"""
- /\_/\
-( -.- )  Mood: Hungry
- > ~ <
-""",
+        "open": [
+            r"/\_/\ ",
+            r"( o.o )",
+            r" > ~ < ",
+        ],
+        "closed": [
+            r"/\_/\ ",
+            r"( -.- )",
+            r" > ~ < ",
+        ],
     },
     BORED: {
-        "open": r"""
- /\_/\
-( -.- )  Mood: Bored
- > - <
-""",
-        "closed": r"""
- /\_/\
-( -.- )  Mood: Bored
- > - <
-""",
+        "open": [
+            r"/\_/\ ",
+            r"( -.- )",
+            r" > - < ",
+        ],
+        "closed": [
+            r"/\_/\ ",
+            r"( -.- )",
+            r" > - < ",
+        ],
     },
 }
 
 
+def _compose_frame(base_lines: list[str], mood: str) -> str:
+    mood_text = f"Mood: {mood.capitalize()}"
+    content_width = max(max(len(line) for line in base_lines), len(mood_text))
+    centered_pet = [line.center(content_width) for line in base_lines]
+    centered_mood = mood_text.center(content_width)
+    return "\n" + "\n".join(centered_pet + [centered_mood]) + "\n"
+
+
 def get_frame(mood: str, blink: bool = False) -> str:
-    mood_frames = ASCII_FRAMES[normalize_mood(mood)]
-    return mood_frames["closed"] if blink else mood_frames["open"]
+    safe_mood = normalize_mood(mood)
+    mode = "closed" if blink else "open"
+    return _compose_frame(ASCII_BASE[safe_mood][mode], safe_mood)
